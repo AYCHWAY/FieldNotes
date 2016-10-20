@@ -1,13 +1,18 @@
-var MapboxClient = require('mapbox/lib/services/datasets');
+// FIELDNOTES
+// A customizable field reporting app made with Mapbox
+
+// Setup
+// 1. Signup for a Mapbox account and add your public token https://www.mapbox.com/studio/account/tokens/
+mapboxgl.accessToken = 'pk.eyJ1IjoicGxhbmVtYWQiLCJhIjoiemdYSVVLRSJ9.g3lbg_eN0kztmsfIPxa9MQ';
+
+// 2. Create a new access token with the `datasets:read` and `datasets:write` scope. Request for a beta access if you do not see this option https://www.mapbox.com/api-documentation/#datasets
+var mapboxAccessDatasetToken = 'sk.eyJ1IjoidGhlcGxhbmVtYWQiLCJhIjoiY2l1aTI0czE1MDAzbjJ6b3ljZWppY2NveiJ9.CpfZmdw0lewIq9vY4-I-KQ';
+
+// 3. Create a new Mapbox dataset and set the dataset location https://www.mapbox.com/blog/wildfire-datasets/
 var dataset = 'citdwsmsa007846o5n1ff2zs9';
 var DATASETS_BASE = 'https://api.mapbox.com/datasets/v1/theplanemad/' + dataset + '/';
-var mapboxAccessDatasetToken = 'sk.eyJ1IjoidGhlcGxhbmVtYWQiLCJhIjoiY2l1aTI0czE1MDAzbjJ6b3ljZWppY2NveiJ9.CpfZmdw0lewIq9vY4-I-KQ';
-var mapbox = new MapboxClient(mapboxAccessDatasetToken);
 
-var reviewer;
-var _tmp = {};
-
-mapboxgl.accessToken = 'pk.eyJ1IjoicGxhbmVtYWQiLCJhIjoiemdYSVVLRSJ9.g3lbg_eN0kztmsfIPxa9MQ';
+// 4. Customize your map style and location
 var map = new mapboxgl.Map({
     container: 'map', // container id
     style: 'mapbox://styles/planemad/cip0m8hzf0003dhmh432q7g2k', //stylesheet location
@@ -15,6 +20,12 @@ var map = new mapboxgl.Map({
     zoom: 16, // starting zoom
     hash: true
 });
+
+var MapboxClient = require('mapbox/lib/services/datasets');
+var mapbox = new MapboxClient(mapboxAccessDatasetToken);
+
+var reviewer;
+var _tmp = {};
 
 var geolocate = map.addControl(new mapboxgl.Geolocate({
     position: 'bottom-right'
@@ -81,7 +92,7 @@ map.on('style.load', function(e) {
             }
 
             function overlayFeatureForm(feature) {
-                  var formOptions = "<div class='radio-pill pill pad1y clearfix'><input id='valid' type='radio' name='review' value='tree' checked='checked'><label for='tree' class='short button icon check fill-green'>Safe</label><input id='sapling' type='radio' name='review' value='sapling'><label for='sapling' class='short button icon check fill-red'>Danger</label></div>";
+                  var formOptions = "<div class='radio-pill pill pad1y clearfix'><input id='safe' type='radio' name='review' value='safe' checked='checked'><label for='safe' class='short button icon check fill-green'>Safe</label><input id='unsafe' type='radio' name='review' value='unsafe'><label for='unsafe' class='short button icon check fill-red'>Danger</label></div>";
                 var formReviewer = "<fieldset><label>Reported by: <span id='reviewer' style='padding:5px;background-color:#eee'></span></label><input type='text' name='reviewer' placeholder='name'></input></fieldset>"
                 var popupHTML = "<form>" + formOptions + formReviewer + "<a id='updateOverlayFeature' class='button col4' href='#'>Save</a><a id='deleteOverlayFeature' class='button quiet fr col4' href='#' style=''>Delete</a></form>";
                 var popup = new mapboxgl.Popup()
@@ -91,7 +102,7 @@ map.on('style.load', function(e) {
 
                 // Show existing status if available
                 if (feature) {
-                    $("input[name=review][value=" + feature.properties["natural"] + "]").prop('checked', true);
+                    $("input[name=review][value=" + feature.properties["key"] + "]").prop('checked', true);
                     $("#reviewer").html(feature.properties["contributed_by"]);
                     newOverlayFeature = feature;
                     newOverlayFeature["id"] = feature.properties["id"];
@@ -107,7 +118,7 @@ map.on('style.load', function(e) {
 
                 // Update dataset with feature status on clicking save
                 document.getElementById("updateOverlayFeature").onclick = function() {
-                    newOverlayFeature.properties["natural"] = $("input[name=review]:checked").val();
+                    newOverlayFeature.properties["key"] = $("input[name=review]:checked").val();
                     reviewer = $("input[name=reviewer]").val();
                     newOverlayFeature.properties["contributed_by"] = reviewer;
                     popup.remove();
