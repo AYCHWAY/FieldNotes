@@ -16,7 +16,7 @@ A map tool to easily corwdsource notes from the field.
 - Set the initial [map coordinates](https://github.com/osmlab/fieldnotes/blob/master/index.js#L14).
 
 ## Develop
-You will need node installed.
+You will need node and jekyll installed.
 - Clone the repo and `cd`
 - `npm install && npm start`
 
