@@ -1,6 +1,6 @@
 # Fieldnotes
 ![]()
-A map tool to easily corwdsource notes from the field.
+A map tool to easily crowdsource notes from the field.
 
 ## Features
 - Customize and deploy the entire tool for a reporting project within minutes
