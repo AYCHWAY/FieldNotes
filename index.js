@@ -14,11 +14,13 @@ var DATASETS_BASE = 'https://api.mapbox.com/datasets/v1/theplanemad/' + dataset 
 
 // 4. Customize your map style and location
 var map = new mapboxgl.Map({
-    container: 'map', // container id
-    style: 'mapbox://styles/planemad/cip0m8hzf0003dhmh432q7g2k', //stylesheet location
-    center: [4.3618,50.8480], // starting position
-    zoom: 16, // starting zoom
-    hash: true
+  container: 'map', // container id
+  style: 'mapbox://styles/planemad/cip0m8hzf0003dhmh432q7g2k', //stylesheet location
+  center: [
+    4.3618, 50.8480
+  ], // starting position
+  zoom: 16, // starting zoom
+  hash: true
 });
 
 var MapboxClient = require('mapbox/lib/services/datasets');
@@ -27,155 +29,152 @@ var mapbox = new MapboxClient(mapboxAccessDatasetToken);
 var reviewer;
 var _tmp = {};
 
-var geolocate = map.addControl(new mapboxgl.Geolocate({
-    position: 'bottom-right'
+map.addControl(new mapboxgl.GeolocateControl({
+  positionOptions: {
+    enableHighAccuracy: true,
+    position: bottom - right
+  },
+  trackUserLocation: true
 }));
-map.addControl(new mapboxgl.Navigation());
-
 
 // Layer for review markers
 
-var overlayDataSource = new mapboxgl.GeoJSONSource({
-    data: {}
-});
+var overlayDataSource = new mapboxgl.GeoJSONSource({data: {}});
 
 var overlayData = {
-    'id': 'overlayData',
-    'type': 'circle',
-    'source': 'overlayDataSource',
-    'interactive': true,
-    'layout': {
-        visibility: 'visible'
-    },
-    'paint': {
-        'circle-radius': 15,
-        'circle-color': 'blue'
-    }
+  'id': 'overlayData',
+  'type': 'circle',
+  'source': 'overlayDataSource',
+  'interactive': true,
+  'layout': {
+    visibility: 'visible'
+  },
+  'paint': {
+    'circle-radius': 15,
+    'circle-color': 'blue'
+  }
 };
 
 // Map ready
 map.on('style.load', function(e) {
-    init();
+  init();
 
+  function init() {
 
-    function init() {
+    map.addSource('overlayDataSource', overlayDataSource);
+    map.addLayer(overlayData);
+    getOverlayFeatures();
 
-        map.addSource('overlayDataSource', overlayDataSource);
-        map.addLayer(overlayData);
-        getOverlayFeatures();
+    map.on('click', function(e) {
 
-        map.on('click', function(e) {
+      // Add review marker
+      var newOverlayFeature = {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "coordinates": [],
+          "type": "Point"
+        }
+      };
 
-            // Add review marker
-            var newOverlayFeature = {
-                "type": "Feature",
-                "properties": {},
-                "geometry": {
-                    "coordinates": [
+      var clickedOverlayFeatures = map.queryRenderedFeatures([
+        [
+          e.point.x - 5,
+          e.point.y - 5
+        ],
+        [
+          e.point.x + 5,
+          e.point.y + 5
+        ]
+      ], {layers: ['overlayData']});
+      if (clickedOverlayFeatures.length) {
+        overlayFeatureForm(clickedOverlayFeatures[0]);
 
-                    ],
-                    "type": "Point"
-                }
-            };
+      } else {
+        overlayFeatureForm();
+      }
 
-            var clickedOverlayFeatures = map.queryRenderedFeatures([
-                [e.point.x - 5, e.point.y - 5],
-                [e.point.x + 5, e.point.y + 5]
-            ], {
-                layers: ['overlayData']
-            });
-            if (clickedOverlayFeatures.length) {
-                overlayFeatureForm(clickedOverlayFeatures[0]);
+      function overlayFeatureForm(feature) {
+        var formOptions = "<div class='radio-pill pill pad1y clearfix'><input id='safe' type='radio' name='review' value='safe' checked='checked'><label for='safe' class='short button icon check fill-green'>Safe</label><input id='unsafe' type='radio' name='review' value='unsafe'><label for='unsafe' class='short button icon check fill-red'>Danger</label></div>";
+        var formReviewer = "<fieldset><label>Reported by: <span id='reviewer' style='padding:5px;background-color:#eee'></span></label><input type='text' name='reviewer' placeholder='name'></input></fieldset>"
+        var popupHTML = "<form>" + formOptions + formReviewer + "<a id='updateOverlayFeature' class='button col4' href='#'>Save</a><a id='deleteOverlayFeature' class='button quiet fr col4' href='#' style=''>Delete</a></form>";
+        var popup = new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(popupHTML).addTo(map);
 
-            } else {
-                overlayFeatureForm();
-            }
-
-            function overlayFeatureForm(feature) {
-                  var formOptions = "<div class='radio-pill pill pad1y clearfix'><input id='safe' type='radio' name='review' value='safe' checked='checked'><label for='safe' class='short button icon check fill-green'>Safe</label><input id='unsafe' type='radio' name='review' value='unsafe'><label for='unsafe' class='short button icon check fill-red'>Danger</label></div>";
-                var formReviewer = "<fieldset><label>Reported by: <span id='reviewer' style='padding:5px;background-color:#eee'></span></label><input type='text' name='reviewer' placeholder='name'></input></fieldset>"
-                var popupHTML = "<form>" + formOptions + formReviewer + "<a id='updateOverlayFeature' class='button col4' href='#'>Save</a><a id='deleteOverlayFeature' class='button quiet fr col4' href='#' style=''>Delete</a></form>";
-                var popup = new mapboxgl.Popup()
-                    .setLngLat(e.lngLat)
-                    .setHTML(popupHTML)
-                    .addTo(map);
-
-                // Show existing status if available
-                if (feature) {
-                    $("input[name=review][value=" + feature.properties["key"] + "]").prop('checked', true);
-                    $("#reviewer").html(feature.properties["contributed_by"]);
-                    newOverlayFeature = feature;
-                    newOverlayFeature["id"] = feature.properties["id"];
-                    console.log(feature);
-                } else {
-                    newOverlayFeature.geometry.coordinates = e.lngLat.toArray();
-                }
-
-                // Set reviewer name if previously saved
-                if (reviewer) {
-                    $("input[name=reviewer]").val(reviewer);
-                }
-
-                // Update dataset with feature status on clicking save
-                document.getElementById("updateOverlayFeature").onclick = function() {
-                    newOverlayFeature.properties["key"] = $("input[name=review]:checked").val();
-                    reviewer = $("input[name=reviewer]").val();
-                    newOverlayFeature.properties["contributed_by"] = reviewer;
-                    popup.remove();
-                    mapbox.insertFeature(newOverlayFeature, dataset, function(err, response) {
-                        console.log(response);
-                        overlayFeatureCollection.features = overlayFeatureCollection.features.concat(response);
-                        overlayDataSource.setData(overlayFeatureCollection);
-                    });
-                };
-                // Delete feature on clicking delete
-                document.getElementById("deleteOverlayFeature").onclick = function() {
-                    popup.remove();
-                    mapbox.deleteFeature(newOverlayFeature["id"], dataset, function(err, response) {
-                        console.log(response);
-                    });
-                };
-            }
-
-        });
-
-    }
-
-
-    // Get data from a Mapbox dataset
-    var overlayFeatureCollection = {
-        'type': 'FeatureCollection',
-        'features': []
-    };
-
-    function getOverlayFeatures(startID) {
-
-        var url = DATASETS_BASE + 'features';
-        var params = {
-            'access_token': mapboxAccessDatasetToken
-        };
-
-        // Begin with the last feature of previous request
-        if (startID) {
-            params.start = startID;
+        // Show existing status if available
+        if (feature) {
+          $("input[name=review][value=" + feature.properties["key"] + "]").prop('checked', true);
+          $("#reviewer").html(feature.properties["contributed_by"]);
+          newOverlayFeature = feature;
+          newOverlayFeature["id"] = feature.properties["id"];
+          console.log(feature);
+        } else {
+          newOverlayFeature.geometry.coordinates = e.lngLat.toArray();
         }
 
-        $.getJSON(url, params, function(data) {
+        // Set reviewer name if previously saved
+        if (reviewer) {
+          $("input[name=reviewer]").val(reviewer);
+        }
 
-            console.log(data);
-
-            if (data.features.length) {
-                data.features.forEach(function(feature) {
-                    // Add dataset feature id as a property
-                    feature.properties.id = feature.id;
-                });
-                overlayFeatureCollection.features = overlayFeatureCollection.features.concat(data.features);
-                var lastFeatureID = data.features[data.features.length - 1].id;
-                getOverlayFeatures(lastFeatureID);
-                overlayDataSource.setData(overlayFeatureCollection);
-            }
+        // Update dataset with feature status on clicking save
+        document.getElementById("updateOverlayFeature").onclick = function() {
+          newOverlayFeature.properties["key"] = $("input[name=review]:checked").val();
+          reviewer = $("input[name=reviewer]").val();
+          newOverlayFeature.properties["contributed_by"] = reviewer;
+          popup.remove();
+          mapbox.insertFeature(newOverlayFeature, dataset, function(err, response) {
+            console.log(response);
+            overlayFeatureCollection.features = overlayFeatureCollection.features.concat(response);
             overlayDataSource.setData(overlayFeatureCollection);
-        });
+          });
+        };
+        // Delete feature on clicking delete
+        document.getElementById("deleteOverlayFeature").onclick = function() {
+          popup.remove();
+          mapbox.deleteFeature(newOverlayFeature["id"], dataset, function(err, response) {
+            console.log(response);
+          });
+        };
+      }
+
+    });
+
+  }
+
+  // Get data from a Mapbox dataset
+  var overlayFeatureCollection = {
+    'type': 'FeatureCollection',
+    'features': []
+  };
+
+  function getOverlayFeatures(startID) {
+
+    var url = DATASETS_BASE + 'features';
+    var params = {
+      'access_token': mapboxAccessDatasetToken
+    };
+
+    // Begin with the last feature of previous request
+    if (startID) {
+      params.start = startID;
     }
+
+    $.getJSON(url, params, function(data) {
+
+      console.log(data);
+
+      if (data.features.length) {
+        data.features.forEach(function(feature) {
+          // Add dataset feature id as a property
+          feature.properties.id = feature.id;
+        });
+        overlayFeatureCollection.features = overlayFeatureCollection.features.concat(data.features);
+        var lastFeatureID = data.features[data.features.length - 1].id;
+        getOverlayFeatures(lastFeatureID);
+        overlayDataSource.setData(overlayFeatureCollection);
+      }
+      overlayDataSource.setData(overlayFeatureCollection);
+    });
+  }
 
 });
